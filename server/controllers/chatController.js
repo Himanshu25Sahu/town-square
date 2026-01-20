@@ -59,7 +59,7 @@ export const getChatDetails = AsyncHandler(async (req, res, next) => {
     chat,
   });
 });
-
+   
 
 
 export const listUserChats = AsyncHandler(async (req, res, next) => {
