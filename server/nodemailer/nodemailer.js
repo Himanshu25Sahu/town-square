@@ -8,12 +8,19 @@ function generateVerificationCode() {
 export const sendMail = async (ReciverMail) => {
   try {
     const verificationCode = generateVerificationCode();
+    
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false, // Must be false for port 587
       auth: {
-          user: 'devchatapplication@gmail.com' || process.env.TEAM_EMAIL,
-          pass: 'wfml fyex dhmt wkzw'
-      }
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS // Ensure this is an "App Password"
+      },
+      // Added timeouts to prevent the ETIMEDOUT error
+      connectionTimeout: 10000, // 10 seconds
+      greetingTimeout: 5000,
+      socketTimeout: 15000,
     });
 
     await transporter.sendMail({
@@ -27,9 +34,10 @@ export const sendMail = async (ReciverMail) => {
              <p>Need help? Contact our support team.</p>
              <p><b>TownSquare Team</b></p>`,
     });
+
     return verificationCode;
   } catch (error) {
     console.error("Error sending email:", error);
-    throw new Error("Failed to send verification email");
+    throw error; // Throw the actual error so your controller can see the message
   }
 };
