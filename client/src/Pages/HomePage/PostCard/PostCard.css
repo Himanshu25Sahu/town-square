@@ -263,16 +263,7 @@
   .card-background {
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-      45deg,
-      var(--neo-bg-dark),
-      var(--neo-bg-card),
-      var(--neo-bg-input),
-      var(--neo-bg-card),
-      var(--neo-bg-dark)
-    );
-    background-size: 400% 400%;
-    animation: gradientShift 15s ease infinite;
+    background: var(--neo-bg-card);
     z-index: -2;
   }
   
@@ -301,8 +292,7 @@
     mask-composite: exclude;
     pointer-events: none;
     z-index: 1;
-    opacity: 0.7;
-    animation: borderGlow 5s linear infinite;
+    opacity: 0.2;
   }
   
   .post-card.state-0 {
@@ -346,8 +336,7 @@
     height: 3px;
     border-radius: 50%;
     background: var(--quantum-primary);
-    box-shadow: 0 0 10px 2px var(--quantum-primary);
-    animation: floatParticle 15s linear infinite;
+    box-shadow: none;
     opacity: 0;
   }
   
@@ -374,7 +363,7 @@
   }
   
   .post-card:hover {
-    transform: translateY(-4px);
+    transform: translateY(-2px);
     box-shadow: var(--neo-shadow-lg);
   }
   
@@ -419,9 +408,8 @@
     border-radius: 50%;
     background: var(--neo-gradient-primary);
     filter: blur(8px);
-    opacity: 0.7;
+    opacity: 0.2;
     z-index: 0;
-    animation: pulseGlow 3s infinite alternate;
   }
   
   .avatar-ring {
@@ -433,7 +421,6 @@
     border-radius: 50%;
     border: 1px solid var(--quantum-primary);
     z-index: 2;
-    animation: rotateRing 10s linear infinite;
   }
   
   .avatar-ring::before {
@@ -585,7 +572,6 @@
     inset: -4px;
     border-radius: 50%;
     border: 1px solid var(--neo-primary);
-    animation: pulseRing 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
   }
   
   .post-content {
@@ -761,7 +747,6 @@
     opacity: 1;
     border-top: 1px solid var(--neo-glass-border);
     padding: 1.5rem;
-    animation: slideIn 0.5s ease-out;
   }
   
   .comments-header {

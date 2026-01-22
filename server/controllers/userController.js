@@ -16,6 +16,8 @@ import jwt from "jsonwebtoken";
 import { sendMessage } from "../nodemailer/mailMessage.js";
 import dotenv from "dotenv";
 dotenv.config();
+
+
 export const registerUser = AsyncHandler(async (req, res, next) => {
   const { username, email, password, role, phone, address, city, district, county, postcode } = req.body;
 
@@ -38,6 +40,36 @@ export const registerUser = AsyncHandler(async (req, res, next) => {
     throw new ErrorHandler("Error uploading avatar file", 500);
   }
 
+  if (process.env.NODE_ENV !== "production") {
+    // Directly create the user and location (Bypassing OTP)
+    const newUser = await User.create({
+      username,
+      email,
+      password,
+      role,
+      phone,
+      location: { address, city, district, county, postcode },
+      avatar: uploadedAvatar.url,
+      avatarPublicId: uploadedAvatar.public_id,
+      communitiesJoined: [county],
+    });
+
+    // Check/Create Location
+    let existingLocation = await Location.findOne({ county, postcode, city });
+    if (!existingLocation) {
+      existingLocation = await Location.create({ county, postcode, city });
+    }
+
+    // Handle Chat Creation
+    req.user = { id: newUser._id };
+    await createChat(req, res, next);
+
+    return res.status(201).json({
+      success: true,
+      message: "Development Mode: User registered directly without email verification.",
+      user: newUser,
+    });
+  }
   const verificationCode = await sendMail(email);
 
   req.session.verificationData = {
@@ -184,53 +216,67 @@ export const getUserDetails = AsyncHandler(async (req, res, next) => {
 
 export const deleteUser = AsyncHandler(async (req, res, next) => {
   const userId = req.user?._id;
-  
+
   if (!userId) {
-    throw new ApiError(401, "Unauthorized: User ID not found");
+    throw new ErrorHandler("Unauthorized: User ID not found", 401);
   }
 
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  // 1. Transaction setup: Only use if in production (requires Replica Set)
+  const isProduction = process.env.NODE_ENV === "production";
+  let session = null;
+  if (isProduction) {
+    session = await mongoose.startSession();
+    session.startTransaction();
+  }
+
+  // Options object to pass to Mongoose methods
+  const options = session ? { session } : {};
 
   try {
     // 1. Delete all messages sent by the user
-    await Message.deleteMany({ sender: userId }).session(session);
+    await Message.deleteMany({ sender: userId }, options);
 
     // 2. Handle chats where user is a member
-    const chats = await Chat.find({ members: userId }).session(session);
+    const chats = await Chat.find({ members: userId }, null, options);
     for (const chat of chats) {
       // Remove user from members array
       chat.members = chat.members.filter(member => !member.equals(userId));
-      
+
       if (chat.members.length === 0) {
         // Delete chat if no members left
-        await Chat.findByIdAndDelete(chat._id).session(session);
+        await Chat.findByIdAndDelete(chat._id, options);
       } else {
-        await chat.save({ session });
+        await chat.save(options);
       }
     }
 
     // 3. Delete all comments by the user and remove references from posts
-    await Comment.deleteMany({ userId: userId }).session(session);
-    await Post.updateMany(
-      { comments: { $in: await Comment.find({ userId: userId }).distinct('_id') } },
-      { $pull: { comments: { $in: await Comment.find({ userId: userId }).distinct('_id') } } },
-      { session }
-    );
+    const userCommentIds = await Comment.find({ userId: userId }, null, options).distinct('_id');
+    await Comment.deleteMany({ userId: userId }, options);
+    
+    if (userCommentIds.length > 0) {
+      await Post.updateMany(
+        { comments: { $in: userCommentIds } },
+        { $pull: { comments: { $in: userCommentIds } } },
+        options
+      );
+    }
 
     // 4. Handle posts created by the user
-    const userPosts = await Post.find({ createdBy: userId }).session(session);
+    const userPosts = await Post.find({ createdBy: userId }, null, options);
     for (const post of userPosts) {
-      // First delete all comments on these posts
-      await Comment.deleteMany({ postId: post._id }).session(session);
-      // Then delete the post
-      await Post.findByIdAndDelete(post._id).session(session);
+      // Delete comments on these posts first
+      await Comment.deleteMany({ postId: post._id }, options);
+      // Delete the post
+      await Post.findByIdAndDelete(post._id, options);
     }
 
     // 5. Remove user references from other posts (votes, polls, surveys, etc.)
+    // Note: When using an aggregation pipeline in updateMany, 
+    // the options object MUST be the third argument.
     await Post.updateMany(
-      {},
-      [
+      {}, // Filter
+      [   // Pipeline
         {
           $set: {
             "votedUsers": {
@@ -297,23 +343,33 @@ export const deleteUser = AsyncHandler(async (req, res, next) => {
           }
         }
       ],
-      { session, multi: true }
+      options // CORRECT POSITION FOR OPTIONS
     );
 
     // 6. Finally, delete the user
-    await User.findByIdAndDelete(userId).session(session);
+    await User.findByIdAndDelete(userId, options);
 
-    await session.commitTransaction();
+    // Commit transaction if it exists
+    if (session) {
+      await session.commitTransaction();
+    }
 
     return res
       .status(200)
       .json(new ApiResponse(200, null, "User account and all associated data deleted successfully"));
 
   } catch (error) {
-    await session.abortTransaction();
-    throw new ApiError(500, `Failed to delete user account: ${error.message}`);
+    // Abort transaction if it exists
+    if (session) {
+      await session.abortTransaction();
+    }
+    // Fixed: Message first, Status Code second
+    throw new ErrorHandler(`Failed to delete user account: ${error.message}`, 500);
   } finally {
-    session.endSession();
+    // End session if it exists
+    if (session) {
+      session.endSession();
+    }
   }
 });
 

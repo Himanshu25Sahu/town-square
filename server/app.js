@@ -9,14 +9,12 @@ import { error } from "./middlewares/error.js";
 import session from 'express-session';
 import { MessageRouter } from "./routes/messageRouter.js";
 import {Redis} from "@upstash/redis"
+import redis from './lib/redis.js'; 
 
 export const app = express();
 dotenv.config()
 
-export const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_URL,
-  token: process.env.UPSTASH_REDIS_TOKEN,
-});
+export { redis };
 
 app.use(express.json());
 app.use(cookieParser());
