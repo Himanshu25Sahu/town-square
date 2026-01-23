@@ -22,6 +22,8 @@ connection()
     console.error("DATABASE CONNECTION FAILED:", e);
   });
 
+console.log(process.env.EMAIL_USER);
+console.log(process.env.EMAIL_PASS);
 
 console.log("Setting up cron job...");
 cron.schedule("*/30 * * * *", async () => {

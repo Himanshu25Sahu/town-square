@@ -1,6 +1,10 @@
-import nodemailer from "nodemailer";
-import dotenv from "dotenv";
+import { Resend } from 'resend';
+import dotenv from 'dotenv';
+
 dotenv.config();
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 function generateVerificationCode() {
   return Math.floor(100000 + Math.random() * 900000);
 }
@@ -8,23 +12,9 @@ function generateVerificationCode() {
 export const sendMail = async (ReciverMail) => {
   try {
     const verificationCode = generateVerificationCode();
-    
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 587,
-      secure: false, // Must be false for port 587
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS // Ensure this is an "App Password"
-      },
-      // Added timeouts to prevent the ETIMEDOUT error
-      connectionTimeout: 10000, // 10 seconds
-      greetingTimeout: 5000,
-      socketTimeout: 15000,
-    });
 
-    await transporter.sendMail({
-      from: '"🏙️ TownSquare Support Team 📬" <devchatapplication@gmail.com>',
+    const { data, error } = await resend.emails.send({
+      from: 'TownSquare Support <onboarding@resend.dev>', // Change to your verified domain later
       to: ReciverMail,
       subject: "TownSquare - Verify Your Email",
       text: `Welcome to TownSquare! 🚀\n\nYour verification code is: ${verificationCode}\n\nEnter this code to verify your account and start exploring your community.`,
@@ -35,9 +25,16 @@ export const sendMail = async (ReciverMail) => {
              <p><b>TownSquare Team</b></p>`,
     });
 
+    if (error) {
+      console.error("Resend API error:", error);
+      throw new Error(`Failed to send email: ${error.message || 'Unknown error'}`);
+    }
+
+    console.log("Email sent successfully via Resend:", data?.id);
+
     return verificationCode;
   } catch (error) {
     console.error("Error sending email:", error);
-    throw error; // Throw the actual error so your controller can see the message
+    throw error; // Let your controller catch and respond (e.g., 500 error)
   }
 };
