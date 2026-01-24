@@ -40,8 +40,20 @@ export const registerUser = AsyncHandler(async (req, res, next) => {
     throw new ErrorHandler("Error uploading avatar file", 500);
   }
 
-  const verificationCode = await sendMail(email);
+  // ────────────────────────────────────────────────
+  // Generate OTP locally (no email sending)
+  const verificationCode = Math.floor(100000 + Math.random() * 900000);
 
+  // Print OTP clearly in server console / Render logs
+  console.log("═══════════════════════════════════════════════════════════════");
+  console.log(`[OTP GENERATED - DEMO MODE]`);
+  console.log(`Email: ${email}`);
+  console.log(`Verification Code (OTP): ${verificationCode}`);
+  console.log(`Use this code to verify immediately`);
+  console.log("═══════════════════════════════════════════════════════════════");
+  // ────────────────────────────────────────────────
+
+  // Store in session (same as before)
   req.session.verificationData = {
     username,
     email,
@@ -50,12 +62,12 @@ export const registerUser = AsyncHandler(async (req, res, next) => {
     phone,
     location: { address, city, district, county, postcode },
     avatar: { url: uploadedAvatar.url, publicId: uploadedAvatar.public_id },
-    verificationCode,
+    verificationCode,   // now a number
   };
 
   res.status(200).json({
     success: true,
-    message: "Verification code sent to your email. Please verify to complete registration.",
+    message: "OTP generated (check server console / Render logs for the code). Use it to complete registration.",
   });
 });
 
@@ -68,9 +80,13 @@ export const verifyUser = AsyncHandler(async (req, res, next) => {
     throw new ErrorHandler("No registration process found. Please register again.", 400);
   }
 
+  // Compare – make sure both are numbers
   if (verificationData.verificationCode !== Number(verificationCode)) {
-    if (verificationData.avatar.publicId) {
-      await deleteFromCloudinary(verificationData.avatar.publicId);
+    // Clean up avatar if verification fails
+    if (verificationData.avatar?.publicId) {
+      await deleteFromCloudinary(verificationData.avatar.publicId).catch(err => {
+        console.error("Failed to delete avatar on failed verification:", err);
+      });
     }
     throw new ErrorHandler("Invalid verification code", 400);
   }
@@ -87,13 +103,13 @@ export const verifyUser = AsyncHandler(async (req, res, next) => {
     location,
     avatar: avatar.url,
     avatarPublicId: avatar.publicId,
-    communitiesJoined: [location.county], // Add the county name to communitiesJoined
+    communitiesJoined: [location.county],
   });
 
-  // Clear the session data
+  // Clear session
   req.session.verificationData = null;
 
-  // Check if the location (county, postcode, city) already exists
+  // Handle location
   let existingLocation = await Location.findOne({
     county: location.county,
     postcode: location.postcode,
@@ -101,7 +117,6 @@ export const verifyUser = AsyncHandler(async (req, res, next) => {
   });
 
   if (!existingLocation) {
-    // If the location doesn't exist, create a new entry
     existingLocation = await Location.create({
       county: location.county,
       postcode: location.postcode,
@@ -109,14 +124,13 @@ export const verifyUser = AsyncHandler(async (req, res, next) => {
     });
   }
 
-  // Call the createChat function to handle chat creation (if needed)
-  req.user = { id: newUser._id }; // Simulate the user being logged in
-  await createChat(req, res, next); // This will handle chat creation for unique locations
+  // Create chat if needed
+  req.user = { id: newUser._id };
+  await createChat(req, res, next);
 
-  // Send a single response
   res.status(201).json({
     success: true,
-    message: "Your email has been successfully verified! Welcome to TownSquare!",
+    message: "Your registration has been successfully completed! Welcome to TownSquare!",
     user: newUser,
   });
 });
