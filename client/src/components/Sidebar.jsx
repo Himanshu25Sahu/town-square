@@ -1,9 +1,9 @@
-import React,{ useState, useEffect, useMemo, useCallback } from "react"
-import { Link, useLocation, useNavigate } from "react-router-dom"
-import { useDispatch, useSelector } from "react-redux"
-import { logout } from "../Slices/AuthSlice"
-import ThemeToggle from "./ThemeToggle"
-import "./Sidebar.css"
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { logout } from "../Slices/AuthSlice";
+import ThemeToggle from "./ThemeToggle";
+import "./Sidebar.css";
 
 // Icons (consider dynamic imports if bundle size is a concern)
 import {
@@ -19,7 +19,7 @@ import {
   LogOut,
   Menu,
   X,
-} from "./Icons"
+} from "./Icons";
 
 // Split sidebar items into a separate config file or memoize
 const sidebarConfig = [
@@ -27,132 +27,174 @@ const sidebarConfig = [
     section: "Main",
     items: [
       { icon: <Home />, label: "Home", href: "/", badge: null },
-      { icon: <MessageSquare />, label: "Discussions", href: "/discussions"},
-      { icon: <FileText />, label: "Announcements", href: "/announcements"},
+      { icon: <MessageSquare />, label: "Discussions", href: "/discussions" },
+      { icon: <FileText />, label: "Announcements", href: "/announcements" },
     ],
   },
   {
     section: "Engagement",
     items: [
-      { icon: <Vote />, label: "Surveys & Polls", href: "/surveys", badge: null },
-      { icon: <ShoppingBag />, label: "Marketplace", href: "/marketplace", badge: null },
+      {
+        icon: <Vote />,
+        label: "Surveys & Polls",
+        href: "/surveys",
+        badge: null,
+      },
+      {
+        icon: <ShoppingBag />,
+        label: "Marketplace",
+        href: "/marketplace",
+        badge: null,
+      },
     ],
   },
   {
     section: "Services",
-    items: [{ icon: <Phone />, label: "Emergency", href: "/emergency", badge: null, isEmergency: true }],
+    items: [
+      {
+        icon: <Phone />,
+        label: "Emergency",
+        href: "/emergency",
+        badge: null,
+        isEmergency: true,
+      },
+    ],
   },
-]
+];
 
 // Split SidebarItem into a separate component to optimize rendering
-const SidebarItem = React.memo(({ item, isActive, isCollapsed, isMobileOpen }) => (
-  <Link
-    to={item.href}
-    className={`sidebar-nav-item ${isActive ? "active" : ""}`}
-    aria-current={isActive ? "page" : undefined}
-  >
-    <div className="sidebar-nav-icon">{item.icon}</div>
-    {(!isCollapsed || isMobileOpen) && (
-      <>
-        <span className="sidebar-nav-text">{item.label}</span>
-        {item.badge && <span className="sidebar-nav-badge">{item.badge}</span>}
-        {item.isEmergency && <span className="sidebar-emergency-indicator"></span>}
-      </>
-    )}
-  </Link>
-))
+const SidebarItem = React.memo(
+  ({ item, isActive, isCollapsed, isMobileOpen }) => (
+    <Link
+      to={item.href}
+      className={`sidebar-nav-item ${isActive ? "active" : ""}`}
+      aria-current={isActive ? "page" : undefined}
+    >
+      <div className="sidebar-nav-icon">{item.icon}</div>
+      {(!isCollapsed || isMobileOpen) && (
+        <>
+          <span className="sidebar-nav-text">{item.label}</span>
+          {item.badge && (
+            <span className="sidebar-nav-badge">{item.badge}</span>
+          )}
+          {item.isEmergency && (
+            <span className="sidebar-emergency-indicator"></span>
+          )}
+        </>
+      )}
+    </Link>
+  ),
+);
 
 function Sidebar() {
-  const location = useLocation()
-  const navigate = useNavigate()
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [isMobileOpen, setIsMobileOpen] = useState(false)
-  const [theme, setTheme] = useState("light")
-  const dispatch = useDispatch()
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [theme, setTheme] = useState("light");
+  const dispatch = useDispatch();
 
   // Optimize Redux selectors - createSelector would be better if using reselect
-  const isAuthorized = useSelector((state) => state.user.isAuthorized)
-  const userData = useSelector((state) => state.user.userData)
-  const { username, role, avatar } = userData || {}
+  const isAuthorized = useSelector((state) => state.user.isAuthorized);
+  const userData = useSelector((state) => state.user.userData);
+  const { username, role, avatar } = userData || {};
 
   // Animation on mount
-  const [mounted, setMounted] = useState(false)
+  const [mounted, setMounted] = useState(false);
 
   // Load and apply saved theme - memoized callback
   const applyTheme = useCallback((newTheme) => {
-    document.documentElement.setAttribute("data-theme", newTheme)
-    document.documentElement.classList.remove("light", "dark")
-    document.documentElement.classList.add(newTheme)
-    localStorage.setItem("theme", newTheme)
-  }, [])
+    document.documentElement.setAttribute("data-theme", newTheme);
+    document.documentElement.classList.remove("light", "dark");
+    document.documentElement.classList.add(newTheme);
+    localStorage.setItem("theme", newTheme);
+  }, []);
 
   // Load theme on mount
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") || "light"
-    setTheme(savedTheme)
-    applyTheme(savedTheme)
-    setTimeout(() => setMounted(true), 0)
-  }, [applyTheme])
+    const savedTheme = localStorage.getItem("theme") || "light";
+    setTheme(savedTheme);
+    applyTheme(savedTheme);
+    setTimeout(() => setMounted(true), 0);
+  }, [applyTheme]);
 
   // Toggle theme - memoized callback
   const toggleTheme = useCallback(() => {
-    const newTheme = theme === "light" ? "dark" : "light"
-    setTheme(newTheme)
-    applyTheme(newTheme)
-  }, [theme, applyTheme])
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    applyTheme(newTheme);
+  }, [theme, applyTheme]);
 
   // Event handlers - memoized callbacks
-  const toggleSidebar = useCallback(() => setIsCollapsed((prev) => !prev), [])
-  const toggleMobileSidebar = useCallback(() => setIsMobileOpen((prev) => !prev), [])
-  
+  const toggleSidebar = useCallback(() => setIsCollapsed((prev) => !prev), []);
+  const toggleMobileSidebar = useCallback(
+    () => setIsMobileOpen((prev) => !prev),
+    [],
+  );
   const handleLogout = useCallback(() => {
-    dispatch(logout())
-    navigate("/login")
-  }, [dispatch, navigate])
-
+    // Navigate to home first to unmount the profile page cleanly
+    if (location.pathname === "/profile") {
+      navigate("/", { replace: true });
+      setTimeout(() => {
+        dispatch(logout());
+        navigate("/login", { replace: true });
+      }, 50);
+    } else {
+      dispatch(logout());
+      navigate("/login", { replace: true });
+    }
+  }, [dispatch, navigate, location.pathname]);
   // Event listeners setup - optimized
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (isMobileOpen && !e.target.closest(".sidebar") && !e.target.closest(".sidebar-mobile-toggle")) {
-        setIsMobileOpen(false)
+      if (
+        isMobileOpen &&
+        !e.target.closest(".sidebar") &&
+        !e.target.closest(".sidebar-mobile-toggle")
+      ) {
+        setIsMobileOpen(false);
       }
-    }
+    };
 
     const handleResize = () => {
       if (window.innerWidth > 768 && isMobileOpen) {
-        setIsMobileOpen(false)
+        setIsMobileOpen(false);
       }
-    }
+    };
 
-    document.addEventListener("click", handleClickOutside)
-    window.addEventListener("resize", handleResize)
+    document.addEventListener("click", handleClickOutside);
+    window.addEventListener("resize", handleResize);
 
     return () => {
-      document.removeEventListener("click", handleClickOutside)
-      window.removeEventListener("resize", handleResize)
-    }
-  }, [isMobileOpen])
+      document.removeEventListener("click", handleClickOutside);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [isMobileOpen]);
 
   // Prevent body scroll when mobile sidebar is open
   useEffect(() => {
-    document.body.style.overflow = isMobileOpen ? "hidden" : ""
+    document.body.style.overflow = isMobileOpen ? "hidden" : "";
     return () => {
-      document.body.style.overflow = ""
-    }
-  }, [isMobileOpen])
+      document.body.style.overflow = "";
+    };
+  }, [isMobileOpen]);
 
   // Redirect to login page if not logged in
   useEffect(() => {
     if (!isAuthorized && location.pathname !== "/login") {
-      navigate("/login")
+      navigate("/login");
     }
-  }, [isAuthorized, location.pathname, navigate])
+  }, [isAuthorized, location.pathname, navigate]);
 
-  if (!mounted) return null
+  if (!mounted) return null;
 
   return (
     <>
-      <button className="sidebar-mobile-toggle" onClick={toggleMobileSidebar} aria-label="Toggle sidebar menu">
+      <button
+        className="sidebar-mobile-toggle"
+        onClick={toggleMobileSidebar}
+        aria-label="Toggle sidebar menu"
+      >
         <Menu className="sidebar-toggle-icon" />
       </button>
 
@@ -191,7 +233,11 @@ function Sidebar() {
             </span>
           </Link>
 
-          <button className="sidebar-mobile-close" onClick={toggleMobileSidebar} aria-label="Close sidebar">
+          <button
+            className="sidebar-mobile-close"
+            onClick={toggleMobileSidebar}
+            aria-label="Close sidebar"
+          >
             <X />
           </button>
         </div>
@@ -207,7 +253,9 @@ function Sidebar() {
         <div className="sidebar-content">
           {sidebarConfig.map((section, sectionIndex) => (
             <div key={sectionIndex} className="sidebar-section">
-              {!isCollapsed && <div className="sidebar-section-title">{section.section}</div>}
+              {!isCollapsed && (
+                <div className="sidebar-section-title">{section.section}</div>
+              )}
               <nav className="sidebar-nav">
                 {section.items.map((item, itemIndex) => (
                   <SidebarItem
@@ -256,24 +304,36 @@ function Sidebar() {
             )}
           </div>
           {isAuthorized ? (
-            <button className="sidebar-nav-item sidebar-logout" onClick={handleLogout} aria-label="Logout">
+            <button
+              className="sidebar-nav-item sidebar-logout"
+              onClick={handleLogout}
+              aria-label="Logout"
+            >
               <div className="sidebar-nav-icon">
                 <LogOut />
               </div>
-              {(!isCollapsed || isMobileOpen) && <span className="sidebar-nav-text">Logout</span>}
+              {(!isCollapsed || isMobileOpen) && (
+                <span className="sidebar-nav-text">Logout</span>
+              )}
             </button>
           ) : (
-            <Link to="/login" className="sidebar-nav-item sidebar-login" aria-label="Login">
+            <Link
+              to="/login"
+              className="sidebar-nav-item sidebar-login"
+              aria-label="Login"
+            >
               <div className="sidebar-nav-icon">
                 <LogIn />
               </div>
-              {(!isCollapsed || isMobileOpen) && <span className="sidebar-nav-text">Login</span>}
+              {(!isCollapsed || isMobileOpen) && (
+                <span className="sidebar-nav-text">Login</span>
+              )}
             </Link>
           )}
         </div>
       </div>
     </>
-  )
+  );
 }
 
-export default React.memo(Sidebar)
+export default React.memo(Sidebar);

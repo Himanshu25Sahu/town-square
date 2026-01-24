@@ -40,36 +40,6 @@ export const registerUser = AsyncHandler(async (req, res, next) => {
     throw new ErrorHandler("Error uploading avatar file", 500);
   }
 
-  if (process.env.NODE_ENV !== "production") {
-    // Directly create the user and location (Bypassing OTP)
-    const newUser = await User.create({
-      username,
-      email,
-      password,
-      role,
-      phone,
-      location: { address, city, district, county, postcode },
-      avatar: uploadedAvatar.url,
-      avatarPublicId: uploadedAvatar.public_id,
-      communitiesJoined: [county],
-    });
-
-    // Check/Create Location
-    let existingLocation = await Location.findOne({ county, postcode, city });
-    if (!existingLocation) {
-      existingLocation = await Location.create({ county, postcode, city });
-    }
-
-    // Handle Chat Creation
-    req.user = { id: newUser._id };
-    await createChat(req, res, next);
-
-    return res.status(201).json({
-      success: true,
-      message: "Development Mode: User registered directly without email verification.",
-      user: newUser,
-    });
-  }
   const verificationCode = await sendMail(email);
 
   req.session.verificationData = {
@@ -88,6 +58,8 @@ export const registerUser = AsyncHandler(async (req, res, next) => {
     message: "Verification code sent to your email. Please verify to complete registration.",
   });
 });
+
+
 export const verifyUser = AsyncHandler(async (req, res, next) => {
   const { verificationCode } = req.body;
   const verificationData = req.session.verificationData;
